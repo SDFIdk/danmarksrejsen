@@ -1,433 +1,443 @@
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<title>Landpolygonen - en prototype på SDFE Labs</title>
+<!DOCTYPE html>
+<html lang="da-DK">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html">
+        <meta charset="utf-8">
+        <title>Yet-to-be-named</title>
 
-<link rel="stylesheet" href="css/leaflet.min.css" type="text/css" />
-<link rel="stylesheet" href="css/jquery-ui.min.css" type="text/css" />
-<link rel="stylesheet" href="css/styles.css" type="text/css" />
+        <link rel="stylesheet" href="css/leaflet.min.css" type="text/css">
+        <link rel="stylesheet" href="css/jquery-ui.min.css" type="text/css">
+        <link rel="stylesheet" href="css/styles.css" type="text/css">
 
-<script type="text/javascript" src="js/leaflet.min.js"></script>
-<script type="text/javascript" src="js/proj4.min.js"></script>
-<script type="text/javascript" src="js/proj4leaflet.min.js"></script>
-<script type="text/javascript" src="js/jquery.min.js"></script>
-<script type="text/javascript" src="js/jquery-ui.min.js"></script>
-<script type="text/javascript" src="js/scale_slider.js"></script>
-<script type="text/javascript" src="js/scale_info_box.js"></script>
-<script type="text/javascript" src="js/scale_data.js"></script>
-<script type="text/javascript" src="data/city_polygons.js"></script>
-<script type="text/javascript" src="data/city_points.js"></script>
-<script type="text/javascript" src="data/connections.js"></script>
-<script type="text/javascript" src="data/routes.js"></script>
-<script type="text/javascript" src="data/q_jernbane_kommune.js"></script>
-<!-- <script type="text/javascript" src="js/single_tile.js"></script> -->
-</head>
+        <script type="text/javascript" src="js/leaflet.min.js"></script>
+        <script type="text/javascript" src="js/proj4.min.js"></script>
+        <script type="text/javascript" src="js/proj4leaflet.min.js"></script>
+        <script type="text/javascript" src="js/jquery.min.js"></script>
+        <script type="text/javascript" src="js/jquery-ui.min.js"></script>
+        <script type="text/javascript" src="js/scale_slider.js"></script>
+        <script type="text/javascript" src="js/scale_info_box.js"></script>
+        <script type="text/javascript" src="js/scale_data.js"></script>
+        <script type="text/javascript" src="data/city_polygons.js"></script>
+        <script type="text/javascript" src="data/city_points.js"></script>
+        <script type="text/javascript" src="data/connections.js"></script>
+        <script type="text/javascript" src="data/routes.js"></script>
+        <script type="text/javascript" src="data/q_jernbane_kommune.js"></script>
+        <!-- <script type="text/javascript" src="js/single_tile.js"></script> -->
+    </head>
 
-<body>
-<div id="map"></div>
+    <body>
+        <div id="map"></div>
 
-<div id="modal-question" class="modal-window">
-    <h2>Spørgsmål</h2>
-    <p id="question-text">Lorem ipsum dolor sit amet, consectetur adipiscing elit. </p>
-	<ul>
-		<input type="radio" name="answer" id="rb-1"><span id="answer-1"></span><br>
-		<input type="radio" name="answer" id="rb-2"><span id="answer-2"></span><br>
-		<input type="radio" name="answer" id="rb-3"><span id="answer-3"></span><br>
-	</ul>
-    <button class="modal-btn modal-hide" id="close-button">OK</button>
-</div>
+        <div id="modal-question" class="modal-window">
+            <h2>Spørgsmål</h2>
+            <p id="question-text">Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+            <ul>
+                <input type="radio" name="answer" id="rb-1">
+                <span id="answer-1"></span>
+                <br>
+                <input type="radio" name="answer" id="rb-2">
+                <span id="answer-2"></span>
+                <br>
+                <input type="radio" name="answer" id="rb-3">
+                <span id="answer-3"></span>
+                <br>
+            </ul>
+            <button class="modal-btn modal-hide" id="close-button">OK</button>
+        </div>
 
-<div class="modal-fader"></div>
+        <div class="modal-fader"></div>
 
-<script>
+        <script>
+            document.getElementById("close-button").addEventListener("click", function () {
+                closeQuestionDialog();
+            });
 
-	document.getElementById("close-button").addEventListener("click", function () {
-		closeQuestionDialog();
-	});
+            var visited_cities = [];
+            var correct_answer_number = null;
+            var question_city_id = null;
+            var questions = [q_jernbane_kommune];
 
-	var visited_cities = [];
-	var correct_answer_number = null;
-	var question_city_id = null;
-	var questions = [q_jernbane_kommune];
+            function closeQuestionDialog() {
+                var modalFader = document.querySelector(".modal-fader");
+                var modalWindow = document.querySelector(".modal-window");
 
-	function closeQuestionDialog() {
-		var modalFader = document.querySelector(".modal-fader");
-		var modalWindow = document.querySelector(".modal-window");
-		
-		if(modalFader.className.indexOf("active") !== -1) {
-			modalFader.className = modalFader.className.replace("active", "");
-		}
-		
-		if(modalWindow.className.indexOf("active") !== -1) {
-			modalWindow.className = modalWindow.className.replace("active", "");
-		}
+                if (modalFader.className.indexOf("active") !== -1) {
+                    modalFader.className = modalFader.className.replace("active", "");
+                }
 
-		validateAnswer();
-	}
+                if (modalWindow.className.indexOf("active") !== -1) {
+                    modalWindow.className = modalWindow.className.replace("active", "");
+                }
 
-	function validateAnswer() {
-		var answer = null;
-		if (document.getElementById('rb-1').checked && correct_answer_number == 1 ||
-			document.getElementById('rb-2').checked && correct_answer_number == 2 ||
-			document.getElementById('rb-3').checked && correct_answer_number == 3) {
-			moveToCity(question_city_id);
-		}
-	}
+                validateAnswer();
+            }
 
-	function askQuestionInCity(e) {
-		var layer = e.target;
-		question_city_id = layer.feature.properties.municipality_code;
+            function validateAnswer() {
+                var answer = null;
+                if (document.getElementById('rb-1').checked && correct_answer_number == 1 ||
+                    document.getElementById('rb-2').checked && correct_answer_number == 2 ||
+                    document.getElementById('rb-3').checked && correct_answer_number == 3) {
+                    moveToCity(question_city_id);
+                }
+            }
 
-		question = questions[0][question_city_id];
-		document.getElementById("question-text").innerHTML = question.text;
+            function askQuestionInCity(e) {
+                var layer = e.target;
+                question_city_id = layer.feature.properties.municipality_code;
 
-		var delta_1 = 0;
-		var delta_2 = 0;
-		if(question.answer < 10) {
-			delta_1 = question.answer + Math.random() * (10 - 1) + 1;
-			delta_2 = question.answer + Math.random() * (10 - 1) + 1;
-		} else {
-			delta_1 = question.answer * Math.random() * (1 - 0.1) + 0.1;
-			delta_2 = question.answer * Math.random() * (1 - 0.1) + 0.1;
-		}
-		var correct_answer = question.answer;
-		
-		correct_answer_number = Math.floor(Math.random() * (3 - 1 + 1)) + 1;
-		document.getElementById("answer-" + correct_answer_number.toString()).innerHTML = Math.round(correct_answer);
-		if(correct_answer_number == 1) {
-			document.getElementById("answer-2").innerHTML = Math.round(correct_answer + delta_1);
-			document.getElementById("answer-3").innerHTML = Math.round(correct_answer + delta_2);
-		} else if(correct_answer_number == 2) {
-			document.getElementById("answer-1").innerHTML = Math.round(correct_answer - delta_1);
-			document.getElementById("answer-3").innerHTML = Math.round(correct_answer + delta_2);
-		} else if(correct_answer_number == 3) {
-			document.getElementById("answer-1").innerHTML = Math.round(correct_answer - delta_1);
-			document.getElementById("answer-2").innerHTML = Math.round(correct_answer - delta_2);
-		}
+                question = questions[0][question_city_id];
+                document.getElementById("question-text").innerHTML = question.text;
 
-		document.querySelector(".modal-fader").className += " active";
-    	document.querySelector(".modal-window").className += " active";
-	}
+                var delta_1 = 0;
+                var delta_2 = 0;
+                if (question.answer < 10) {
+                    delta_1 = question.answer + Math.random() * (10 - 1) + 1;
+                    delta_2 = question.answer + Math.random() * (10 - 1) + 1;
+                } else {
+                    delta_1 = question.answer * Math.random() * (1 - 0.1) + 0.1;
+                    delta_2 = question.answer * Math.random() * (1 - 0.1) + 0.1;
+                }
+                var correct_answer = question.answer;
 
-	function moveToCity(e) {
-		//var layer = e.target;
-		//var city_id = layer.feature.properties.municipality_code;
-		visited_cities.push(question_city_id);
+                correct_answer_number = Math.floor(Math.random() * (3 - 1 + 1)) + 1;
+                document.getElementById("answer-" + correct_answer_number.toString()).innerHTML = Math.round(correct_answer);
+                if (correct_answer_number == 1) {
+                    document.getElementById("answer-2").innerHTML = Math.round(correct_answer + delta_1);
+                    document.getElementById("answer-3").innerHTML = Math.round(correct_answer + delta_2);
+                } else if (correct_answer_number == 2) {
+                    document.getElementById("answer-1").innerHTML = Math.round(correct_answer - delta_1);
+                    document.getElementById("answer-3").innerHTML = Math.round(correct_answer + delta_2);
+                } else if (correct_answer_number == 3) {
+                    document.getElementById("answer-1").innerHTML = Math.round(correct_answer - delta_1);
+                    document.getElementById("answer-2").innerHTML = Math.round(correct_answer - delta_2);
+                }
 
-		// Update the travel layer to indicate where we have been.
-		var from_city = city_points.features.find(x => x.properties.municipality_code === current_city_id);
-		var to_city = city_points.features.find(x => x.properties.municipality_code === question_city_id);
+                document.querySelector(".modal-fader").className += " active";
+                document.querySelector(".modal-window").className += " active";
+            }
 
-		var feature = {
-			"type": "Feature", 
-			"properties": {}, 
-			"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::25832" } },
-			"geometry": { "type": "LineString", "coordinates": [ from_city.geometry.coordinates, to_city.geometry.coordinates ] },
-		}
+            function moveToCity(e) {
+                //var layer = e.target;
+                //var city_id = layer.feature.properties.municipality_code;
+                visited_cities.push(question_city_id);
 
-		travel_layer.addData(feature);
+                // Update the travel layer to indicate where we have been.
+                var from_city = city_points.features.find(x => x.properties.municipality_code === current_city_id);
+                var to_city = city_points.features.find(x => x.properties.municipality_code === question_city_id);
 
-		travel_layer.eachLayer(function(layer) {
-			var a = 1;
-		});
+                var feature = {
+                    "type": "Feature",
+                    "properties": {},
+                    "crs": {"type": "name", "properties": {"name": "urn:ogc:def:crs:EPSG::25832"}},
+                    "geometry": {
+                        "type": "LineString",
+                        "coordinates": [from_city.geometry.coordinates, to_city.geometry.coordinates]
+                    },
+                }
 
-		freezeCity(current_city_id);
-		prepareMove(question_city_id);
-	}
+                travel_layer.addData(feature);
 
-	function freezeCity(city_id) {
-		// Find the city and freeze it.
-		city_layer.eachLayer(function(layer) {
-			if(layer.feature.properties.municipality_code === city_id) {
-				layer.off({
-        			mouseover: mouseOverCandidateCity,
-        			mouseout: mouseOut,
-        			click: askQuestionInCity
-				});
-				city_layer.resetStyle(layer);
-				layer.setStyle({
-					color: "#7f7f7f",
-					fillColor: "#7f7f7f",
-				});
-			}
-		});
-	}
+                travel_layer.eachLayer(function (layer) {
+                    var a = 1;
+                });
 
-	function mouseOverCandidateCity(e) {
-		var layer = e.target;
+                freezeCity(current_city_id);
+                prepareMove(question_city_id);
+            }
 
-		layer.setStyle({
-			color: "#ff0000",
-			fillColor: "#ff0000",
-			opacity: 1,
-			fillOpacity: 1
-		});
+            function freezeCity(city_id) {
+                // Find the city and freeze it.
+                city_layer.eachLayer(function (layer) {
+                    if (layer.feature.properties.municipality_code === city_id) {
+                        layer.off({
+                            mouseover: mouseOverCandidateCity,
+                            mouseout: mouseOut,
+                            click: askQuestionInCity
+                        });
+                        city_layer.resetStyle(layer);
+                        layer.setStyle({
+                            color: "#7f7f7f",
+                            fillColor: "#7f7f7f",
+                        });
+                    }
+                });
+            }
 
-		layer.bringToFront();
-	}
+            function mouseOverCandidateCity(e) {
+                var layer = e.target;
 
-	function mouseOut(e) {
-		city_layer.resetStyle(e.target);
-	}
+                layer.setStyle({
+                    color: "#ff0000",
+                    fillColor: "#ff0000",
+                    opacity: 1,
+                    fillOpacity: 1
+                });
 
-	function prepareMove(city_id) {
-		// Locate the neighbours.
-		current_city = city_points.features.find(x => x.properties.municipality_code === city_id);
-		neighbours = current_city.properties.neighbours.split(',');
+                layer.bringToFront();
+            }
 
-		// Setup the neighbour cities.
-		city_layer.eachLayer(function(layer) {
-			if(neighbours.includes(layer.feature.properties.municipality_code) && !visited_cities.includes(layer.feature.properties.municipality_code)) {
-				layer.on({
-					mouseover: mouseOverCandidateCity,
-        			mouseout: mouseOut,
-        			click: askQuestionInCity
-    			});
-			} else {
-				layer.off({
-        			mouseover: mouseOverCandidateCity,
-        			mouseout: mouseOut,
-        			click: askQuestionInCity
-				});
-			}
+            function mouseOut(e) {
+                city_layer.resetStyle(e.target);
+            }
 
-			// Set the current city as blue.
-			if(layer.feature.properties.municipality_code === city_id) {
-				layer.setStyle({
-				color: "#0000ff",
-				fillColor: "#0000ff"
-			});
-			}
-		});
+            function prepareMove(city_id) {
+                // Locate the neighbours.
+                current_city = city_points.features.find(x => x.properties.municipality_code === city_id);
+                neighbours = current_city.properties.neighbours.split(',');
 
-		current_city_id = city_id;
-	}
+                // Setup the neighbour cities.
+                city_layer.eachLayer(function (layer) {
+                    if (neighbours.includes(layer.feature.properties.municipality_code) && !visited_cities.includes(layer.feature.properties.municipality_code)) {
+                        layer.on({
+                            mouseover: mouseOverCandidateCity,
+                            mouseout: mouseOut,
+                            click: askQuestionInCity
+                        });
+                    } else {
+                        layer.off({
+                            mouseover: mouseOverCandidateCity,
+                            mouseout: mouseOut,
+                            click: askQuestionInCity
+                        });
+                    }
 
-	var current_city_id = null;
+                    // Set the current city as blue.
+                    if (layer.feature.properties.municipality_code === city_id) {
+                        layer.setStyle({
+                            color: "#0000ff",
+                            fillColor: "#0000ff"
+                        });
+                    }
+                });
 
-	// Select a random route.
-	// Select random start city.
-	var start_ids = Object.keys(routes);
+                current_city_id = city_id;
+            }
 
-	// Select a random start id.
-	var start_id = start_ids[Math.floor(Math.random()*start_ids.length)];
-	current_city_id = start_id;
+            var current_city_id = null;
 
-	// Select a random goal id.
-	var goal_id = routes[start_id][Math.floor(Math.random()*routes[start_id].length)];
+            // Select a random route.
+            // Select random start city.
+            var start_ids = Object.keys(routes);
 
-	var crs = new L.Proj.CRS("EPSG:25832","+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs", {
-		origin: [120000, 6500000],
-		bounds: L.bounds([120000, 5661139.2],[1378291.2, 6500000]),
-		resolutions: [1638.4, 819.2, 409.6, 204.8, 102.4, 51.2, 25.6, 12.8, 6.4, 3.2, 1.6, 0.8, 0.4, 0.2]
-	});
+            // Select a random start id.
+            var start_id = start_ids[Math.floor(Math.random() * start_ids.length)];
+            current_city_id = start_id;
 
-	// Dataforsyning token.
-	var token = "cfa5247af1118e6c4bef4d63e06a9a24";
+            // Select a random goal id.
+            var goal_id = routes[start_id][Math.floor(Math.random() * routes[start_id].length)];
 
-	// An empty layer so the user can hide the background.
-	var layer_empty = L.tileLayer('');
+            var crs = new L.Proj.CRS("EPSG:25832", "+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs", {
+                origin: [120000, 6500000],
+                bounds: L.bounds([120000, 5661139.2], [1378291.2, 6500000]),
+                resolutions: [1638.4, 819.2, 409.6, 204.8, 102.4, 51.2, 25.6, 12.8, 6.4, 3.2, 1.6, 0.8, 0.4, 0.2]
+            });
 
-	var layer_orto_foraar = L.tileLayer("https://api.dataforsyningen.dk/orto_foraar_wmts_DAF?token=" + token + "&request=GetTile&version=1.0.0&service=WMTS&Layer=orto_foraar_wmts&style=default&format=image/jpeg&TileMatrixSet=KortforsyningTilingDK&TileMatrix={z}&TileRow={y}&TileCol={x}", {
-		minZoom: 1,
-		maxZoom: 13,
-		crossOrigin: true,
-		zoom: function () {
-			var zoomlevel = map._animateToZoom ? map._animateToZoom : map.getZoom();
-			if (zoomlevel < 10)
-				return "L0" + zoomlevel;
-			else
-				return "L" + zoomlevel;
-		},
-		attribution: '<a href="https://www.sdfe.dk">SDFE 2021</a>'
-	});
+            // Dataforsyning token.
+            var token = "cfa5247af1118e6c4bef4d63e06a9a24";
 
-	// var outline_layer = L.tileLayer.wms("https://api.dataforsyningen.dk/service?servicename=landpolygon_labs&token=" + token, {
-	// 	layers: 'landpolygon_ref',
-	// 	format: 'image/png',
-	// 	styles: 'Land_outline',
-	// 	tileSize: 1024,
-	// 	transparent: true,
-	// 	attribution: '<a href="https://www.sdfe.dk">SDFE 2021</a>'
-	// });
+            // An empty layer so the user can hide the background.
+            var layer_empty = L.tileLayer('');
 
-	var landpolygon_layer = L.tileLayer.wms("https://api.dataforsyningen.dk/service?servicename=landpolygon_labs&token=" + token, {
-		layers: 'landpolygon_10000',
-		format: 'image/png',
-		tileSize: 1024,
-		transparent: true,
-		attribution: '<a href="https://www.sdfe.dk">SDFE 2021</a>'
-	});
+            var layer_orto_foraar = L.tileLayer("https://api.dataforsyningen.dk/orto_foraar_wmts_DAF?token=" + token + "&request=GetTile&version=1.0.0&service=WMTS&Layer=orto_foraar_wmts&style=default&format=image/jpeg&TileMatrixSet=KortforsyningTilingDK&TileMatrix={z}&TileRow={y}&TileCol={x}", {
+                minZoom: 1,
+                maxZoom: 13,
+                crossOrigin: true,
+                zoom: function () {
+                    var zoomlevel = map._animateToZoom ? map._animateToZoom : map.getZoom();
+                    if (zoomlevel < 10)
+                        return "L0" + zoomlevel;
+                    else
+                        return "L" + zoomlevel;
+                },
+                attribution: '<a href="https://www.sdfe.dk">SDFE 2021</a>'
+            });
 
-	var city_layer = L.Proj.geoJson(city_polygons,
-	{
-		style: { 
-			"fillColor": "#ff0000",
-			"color": "#ff0000",
-			"opacity": 0.5,
-			"fillOpacity": 0.5,
-		},
-		onEachFeature: function onEachFeature(feature, layer) {
-    		// layer.on({
-        	// 	mouseover: function highlightFeature(e) {
-			// 		var layer = e.target;
+            // var outline_layer = L.tileLayer.wms("https://api.dataforsyningen.dk/service?servicename=landpolygon_labs&token=" + token, {
+            // 	layers: 'landpolygon_ref',
+            // 	format: 'image/png',
+            // 	styles: 'Land_outline',
+            // 	tileSize: 1024,
+            // 	transparent: true,
+            // 	attribution: '<a href="https://www.sdfe.dk">SDFE 2021</a>'
+            // });
 
-			// 		layer.setStyle({
-			// 			opacity: 1,
-			// 			fillOpacity: 1
-			// 		});
+            var landpolygon_layer = L.tileLayer.wms("https://api.dataforsyningen.dk/service?servicename=landpolygon_labs&token=" + token, {
+                layers: 'landpolygon_10000',
+                format: 'image/png',
+                tileSize: 1024,
+                transparent: true,
+                attribution: '<a href="https://www.sdfe.dk">SDFE 2021</a>'
+            });
 
-			// 		layer.bringToFront();
-			// 	},
-        	// 	mouseout: function resetHighlight(e) {
- 			// 	   city_layer.resetStyle(e.target);
-			// 	},
-        	// 	//click: zoomToFeature
-    		// });
-			layer.bindTooltip(
-				feature.properties.name,
-   				{
-					permanent: true, 
-					direction:"center",
-					className: "city-labels"
-				}
-			).openTooltip();
-		}
-	});
+            var city_layer = L.Proj.geoJson(city_polygons,
+                {
+                    style: {
+                        "fillColor": "#ff0000",
+                        "color": "#ff0000",
+                        "opacity": 0.5,
+                        "fillOpacity": 0.5,
+                    },
+                    onEachFeature: function onEachFeature(feature, layer) {
+                        // layer.on({
+                        // 	mouseover: function highlightFeature(e) {
+                        // 		var layer = e.target;
 
-	// Style the cities.
-	city_layer.eachLayer(function(layer) {
-		if(layer.feature.properties.municipality_code === start_id) {
-			layer.setStyle({
-				color: "#0000ff",
-				fillColor: "#0000ff"
-			});
-		}
-		if(layer.feature.properties.municipality_code === goal_id) {
-			layer.setStyle({
-				color: "#00ff00",
-				fillColor: "#00ff00"
-			});
-		}
-	});
+                        // 		layer.setStyle({
+                        // 			opacity: 1,
+                        // 			fillOpacity: 1
+                        // 		});
 
-	var connection_layer = L.Proj.geoJson(connections,
-	{
-		style: { 
-			"color": "#000000",
-			"opacity": 0.5,
-			"weight": 1,
-			"dashArray": "5,5",
-		}
-	});
+                        // 		layer.bringToFront();
+                        // 	},
+                        // 	mouseout: function resetHighlight(e) {
+                        // 	   city_layer.resetStyle(e.target);
+                        // 	},
+                        // 	//click: zoomToFeature
+                        // });
+                        layer.bindTooltip(
+                            feature.properties.name,
+                            {
+                                permanent: true,
+                                direction: "center",
+                                className: "city-labels"
+                            }
+                        ).openTooltip();
+                    }
+                });
 
-	var travel_layer = L.Proj.geoJson({
-		"type": "FeatureCollection",
-		"name": "travel-lines",
-		"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::25832" } },
-		"features": {}
-	}, {
-		style: { 			
-			"color": "#ff0000",
-			"opacity": 1,
-			"weight": 5,
-		}
-	});
+            // Style the cities.
+            city_layer.eachLayer(function (layer) {
+                if (layer.feature.properties.municipality_code === start_id) {
+                    layer.setStyle({
+                        color: "#0000ff",
+                        fillColor: "#0000ff"
+                    });
+                }
+                if (layer.feature.properties.municipality_code === goal_id) {
+                    layer.setStyle({
+                        color: "#00ff00",
+                        fillColor: "#00ff00"
+                    });
+                }
+            });
 
-	// Visualise the start end goal cities.
-	var start_city = city_points.features.find(x => x.properties.municipality_code === start_id);
+            var connection_layer = L.Proj.geoJson(connections,
+                {
+                    style: {
+                        "color": "#000000",
+                        "opacity": 0.5,
+                        "weight": 1,
+                        "dashArray": "5,5",
+                    }
+                });
 
-	// Transform the coordinates to match the requirements of the leaflet marker.
-	var point = proj4("EPSG:25832","EPSG:4326", start_city.geometry.coordinates);
-	// Lat/lng or Lng/lat.
-	point.reverse();
-	// Create the marker.
-	var from_marker_layer = L.marker(point);
+            var travel_layer = L.Proj.geoJson({
+                "type": "FeatureCollection",
+                "name": "travel-lines",
+                "crs": {"type": "name", "properties": {"name": "urn:ogc:def:crs:EPSG::25832"}},
+                "features": {}
+            }, {
+                style: {
+                    "color": "#ff0000",
+                    "opacity": 1,
+                    "weight": 5,
+                }
+            });
 
-	var goal_city = city_points.features.find(x => x.properties.municipality_code === goal_id);
-	var point = proj4("EPSG:25832","EPSG:4326", goal_city.geometry.coordinates);
-	point.reverse();
-	var to_marker_layer = L.marker(point);
+            // Visualise the start end goal cities.
+            var start_city = city_points.features.find(x => x.properties.municipality_code === start_id);
 
-	var map = new L.Map("map", { 
-		crs: crs,
-		layers: [layer_orto_foraar],
-		zoomControl: false
-	});
+            // Transform the coordinates to match the requirements of the leaflet marker.
+            var point = proj4("EPSG:25832", "EPSG:4326", start_city.geometry.coordinates);
+            // Lat/lng or Lng/lat.
+            point.reverse();
+            // Create the marker.
+            var from_marker_layer = L.marker(point);
 
-	var backgroundLayers = {
-		"Ortofoto forår": layer_orto_foraar,
-		'Intet': layer_empty
-	};
-	var layers = {
-		//"Landpolygonmaske": landpolygon_maske_layer,
-		"Landpolygon": landpolygon_layer,
-		"Cities": city_layer,
-		"Connections": connection_layer,
-		"Start": from_marker_layer,
-		"Goal": to_marker_layer,
-		"Travel": travel_layer,
-		//"Havpolygon": havpolygon_layer,
-		//"Kyst": kyst_layer,
-		//"Havn": havn_layer
-	};
+            var goal_city = city_points.features.find(x => x.properties.municipality_code === goal_id);
+            var point = proj4("EPSG:25832", "EPSG:4326", goal_city.geometry.coordinates);
+            point.reverse();
+            var to_marker_layer = L.marker(point);
 
-	L.control.layers(
-		backgroundLayers,
-		{
-			//"Landpolygonmaske": landpolygon_maske_layer,
-			"Landpolygon": landpolygon_layer,
-			"Cities": city_layer,
-			"Connections": connection_layer,
-			"Start": from_marker_layer,
-			"Goal": to_marker_layer,
-			"Travel": travel_layer,
-			//"Havpolygon": havpolygon_layer,
-			//"Kyst": kyst_layer,
-			//"Havn": havn_layer,
-			//"Reference": outline_layer
-		},	{
-			collapsed:false
-	}).addTo(map);
+            var map = new L.Map("map", {
+                crs: crs,
+                layers: [layer_orto_foraar],
+                zoomControl: false
+            });
 
-	L.control.zoom({ 
-		position: 'topright'
-	}).addTo(map);
+            var backgroundLayers = {
+                "Ortofoto forår": layer_orto_foraar,
+                'Intet': layer_empty
+            };
+            var layers = {
+                //"Landpolygonmaske": landpolygon_maske_layer,
+                "Landpolygon": landpolygon_layer,
+                "Cities": city_layer,
+                "Connections": connection_layer,
+                "Start": from_marker_layer,
+                "Goal": to_marker_layer,
+                "Travel": travel_layer,
+                //"Havpolygon": havpolygon_layer,
+                //"Kyst": kyst_layer,
+                //"Havn": havn_layer
+            };
 
-	map.setView(L.latLng(55.9, 11.8), 1);
+            L.control.layers(
+                backgroundLayers,
+                {
+                    //"Landpolygonmaske": landpolygon_maske_layer,
+                    "Landpolygon": landpolygon_layer,
+                    "Cities": city_layer,
+                    "Connections": connection_layer,
+                    "Start": from_marker_layer,
+                    "Goal": to_marker_layer,
+                    "Travel": travel_layer,
+                    //"Havpolygon": havpolygon_layer,
+                    //"Kyst": kyst_layer,
+                    //"Havn": havn_layer,
+                    //"Reference": outline_layer
+                }, {
+                    collapsed: false
+                }).addTo(map);
 
-	// var slider = L.control.scaleSlider(
-	// 	layers,
-	// 	{
-	// 		position: 'bottomleft',
-	// 		defaultScale: scales[scales.length - 1],
-	// 		scales: scales,
-	// 		wmsScales: wmsScales
-	// }).addTo(map);
+            L.control.zoom({
+                position: 'topright'
+            }).addTo(map);
 
-	// var infobox = L.control.scaleInfoBox({
-	// 	position: 'topleft',
-	// 	defaultScale: scales[scales.length - 1],
-	// 	scales: scales,
-	// 	scaleLayers: scaleLayers,
-	// 	scaleData: scaleData
-	// }).addTo(map);
-	// slider.on('scalechange', $.proxy(infobox.changeScale, infobox));
+            map.setView(L.latLng(55.9, 11.8), 1);
 
-	// landpolygon_layer.setOpacity(.75);
+            // var slider = L.control.scaleSlider(
+            // 	layers,
+            // 	{
+            // 		position: 'bottomleft',
+            // 		defaultScale: scales[scales.length - 1],
+            // 		scales: scales,
+            // 		wmsScales: wmsScales
+            // }).addTo(map);
 
-	// Add/show layer now that we have setup everything. 
-	// This it to prevent unnecessary requesting of tiles not used anyway when setting up the map.
-	// map.addLayer(landpolygon_maske_layer);
-	map.addLayer(landpolygon_layer);
-	map.addLayer(city_layer);
-	map.addLayer(connection_layer);
-	map.addLayer(from_marker_layer);
-	map.addLayer(to_marker_layer);
-	map.addLayer(travel_layer);
-	
-	prepareMove(current_city_id);
-	visited_cities.push(current_city_id);
-</script>
-</body>
+            // var infobox = L.control.scaleInfoBox({
+            // 	position: 'topleft',
+            // 	defaultScale: scales[scales.length - 1],
+            // 	scales: scales,
+            // 	scaleLayers: scaleLayers,
+            // 	scaleData: scaleData
+            // }).addTo(map);
+            // slider.on('scalechange', $.proxy(infobox.changeScale, infobox));
+
+            // landpolygon_layer.setOpacity(.75);
+
+            // Add/show layer now that we have setup everything.
+            // This it to prevent unnecessary requesting of tiles not used anyway when setting up the map.
+            // map.addLayer(landpolygon_maske_layer);
+            map.addLayer(landpolygon_layer);
+            map.addLayer(city_layer);
+            map.addLayer(connection_layer);
+            map.addLayer(from_marker_layer);
+            map.addLayer(to_marker_layer);
+            map.addLayer(travel_layer);
+
+            prepareMove(current_city_id);
+            visited_cities.push(current_city_id);
+        </script>
+    </body>
 </html>
